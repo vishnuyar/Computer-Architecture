@@ -4,31 +4,42 @@ import sys
 
 class CPU:
     """Main CPU class."""
+    
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.HLT = 0b00000001
+        self.LDI = 0b10000010
+        self.PRN = 0b01000111
+        self.MUL = 0b10100010
+        self.PUSH = 0b01000101
+        self.POP = 0b01000110
+        self.stackpointer = 0b11110011
+        self.ram = [0]*255
+        self.reg = [0]*8
+        self.pc = [0]*2
+        self.MAR = 0
+        self.MDR = 1
 
-    def load(self):
+    def load(self,program):
         """Load a program into memory."""
 
         address = 0
+        with open(program) as file:
+            for line in file.readlines():
+                #print(f'line {line},length :{len(line)}')
+                if line.startswith("#") or len(line) == 1:
+                    pass
+                else:
+                    line_instruction = line[:8]
+                    instruction = int(line_instruction,2)
+                    #print(instruction)
+                    #print(f'address:{address}')
+                    self.ram[address] = instruction
+                    address += 1
 
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+            
+            
 
 
     def alu(self, op, reg_a, reg_b):
@@ -36,9 +47,17 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
+    
+    def ram_read(self,address):
+        return self.ram[address]
+
+    def ram_write(self,address,value):
+        self.ram[address] = value
+        
 
     def trace(self):
         """
@@ -61,5 +80,38 @@ class CPU:
         print()
 
     def run(self):
-        """Run the CPU."""
-        pass
+        address = 0
+        while self.ram[address]:
+            instruction = self.ram[address]
+            if instruction == self.HLT:
+                return
+            elif instruction == self.PRN:
+                address += 1
+                reg_address = self.ram[address]
+                reg_value = self.reg[reg_address]
+                print(reg_value)
+                
+            elif instruction == self.LDI:
+                address +=1
+                reg_address = self.ram[address]
+                address +=1
+                value = self.ram[address]
+                self.reg[reg_address] = value
+            elif instruction == self.MUL:
+                address +=1
+                reg_a = self.ram[address]
+                address +=1
+                reg_b = self.ram[address] 
+                self.alu('MUL',reg_a,reg_b)
+            elif instruction == self.PUSH:
+                address +=1
+                reg_address = self.ram[address]
+                self.ram[self.stackpointer] = self.reg[reg_address]
+                self.stackpointer -=1
+            elif instruction == self.POP:
+                address +=1
+                reg_address = self.ram[address]
+                self.stackpointer +=1
+                self.reg[reg_address] = self.ram[self.stackpointer]
+                
+            address +=1
