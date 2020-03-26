@@ -18,6 +18,15 @@ class CPU:
         self.CALL = 0b01010000
         self.RET = 0b00010001
         self.ADD = 0b10100000
+        self.ST = 0b10000100
+        self.CMP = 0b10100111
+        self.JEQ = 0b01010101
+        self.PRA = 0b01001000
+        self.LD = 0b10000011
+        self.INC = 0b01100101
+        self.DEC = 0b01100110
+        self.JMP = 0b01010100
+        self.JNE = 0b01010110
         #StackPointer Starting Address
         self.stackpointer = 0b11110011
         #Initialise RAM
@@ -30,7 +39,7 @@ class CPU:
         self.IR = None
         self.MAR = None
         self.MDR = None
-        self.FL = 0
+        self.FL = 0b00000000
 
     def load(self,program):
         """Load a program into memory."""
@@ -60,6 +69,17 @@ class CPU:
             self.reg[reg_a] += self.reg[reg_b]
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "INC":
+            self.reg[reg_a] += 1
+        elif op == "DEC":
+            self.reg[reg_a] -= 1
+        elif op == "CMP":
+            if self.reg[reg_a] > self.reg[reg_b]:
+                self.FL = 0b00000010
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                self.FL = 0b00000100
+            else:
+                self.FL = 0b00000001
         else:
             raise Exception("Unsupported ALU operation")
     
@@ -109,6 +129,14 @@ class CPU:
                 self.pc +=1
                 value = self.ram[self.pc]
                 self.reg[reg_address] = value
+            elif instruction == self.INC:
+                self.pc +=1
+                reg_a = self.ram[self.pc]
+                self.alu('INC',reg_a,1)
+            elif instruction == self.DEC:
+                self.pc +=1
+                reg_a = self.ram[self.pc]
+                self.alu('DEC',reg_a, -1)
             elif instruction == self.MUL:
                 self.pc +=1
                 reg_a = self.ram[self.pc]
@@ -121,6 +149,12 @@ class CPU:
                 self.pc +=1
                 reg_b = self.ram[self.pc] 
                 self.alu('ADD',reg_a,reg_b)
+            elif instruction == self.CMP:
+                self.pc +=1
+                reg_a = self.ram[self.pc]
+                self.pc +=1
+                reg_b = self.ram[self.pc] 
+                self.alu('CMP',reg_a,reg_b)
             elif instruction == self.PUSH:
                 self.pc +=1
                 reg_address = self.ram[self.pc]
@@ -146,6 +180,50 @@ class CPU:
                 self.pc = stack_value
                 #reduce pc value by 1 to counter the effect of pc incrementer
                 self.pc -=1
+            elif instruction == self.JMP:
+                self.pc +=1
+                reg_a = self.ram[self.pc]
+                mem_address = self.reg[reg_a]
+                self.pc = mem_address
+                #reduce pc value by 1 to counter the effect of pc incrementer
+                self.pc -=1
+            elif instruction == self.ST:
+                self.pc +=1
+                reg_a = self.ram[self.pc]
+                self.pc +=1
+                reg_b = self.ram[self.pc]
+                mem_address = self.reg[reg_a]
+                reg_value = self.reg[reg_b]
+                self.ram[mem_address] = reg_value
+            elif instruction == self.JEQ:
+                self.pc += 1
+                if self.FL == 0b00000001:
+                    reg_a = self.ram[self.pc]
+                    mem_address = self.reg[reg_a]
+                    self.pc = mem_address
+                    #reduce pc value by 1 to counter the effect of pc incrementer
+                    self.pc -=1
+            elif instruction == self.JNE:
+                self.pc += 1
+                if (self.FL & 1) == 0:
+                    reg_a = self.ram[self.pc]
+                    mem_address = self.reg[reg_a]
+                    self.pc = mem_address
+                    #reduce pc value by 1 to counter the effect of pc incrementer
+                    self.pc -=1
+            elif instruction == self.PRA:
+                self.pc += 1
+                reg_a = self.ram[self.pc]
+                reg_value = self.reg[reg_a]
+                print(chr(reg_value)) 
+            elif instruction == self.LD:
+                self.pc +=1
+                reg_a = self.ram[self.pc]
+                self.pc +=1
+                reg_b = self.ram[self.pc]
+                mem_address = self.reg[reg_b]
+                reg_value = self.ram[mem_address]
+                self.reg[reg_a] = reg_value
                 
                 
             self.pc +=1

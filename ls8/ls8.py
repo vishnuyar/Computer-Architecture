@@ -3,6 +3,7 @@
 """Main."""
 
 import sys
+import datetime
 from cpu import *
 
 cpu = CPU()
