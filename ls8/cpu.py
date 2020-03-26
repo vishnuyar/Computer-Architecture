@@ -8,23 +8,34 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
+        #Operation Codes
         self.HLT = 0b00000001
         self.LDI = 0b10000010
         self.PRN = 0b01000111
         self.MUL = 0b10100010
         self.PUSH = 0b01000101
         self.POP = 0b01000110
+        self.CALL = 0b01010000
+        self.RET = 0b00010001
+        self.ADD = 0b10100000
+        #StackPointer Starting Address
         self.stackpointer = 0b11110011
-        self.ram = [0]*255
+        #Initialise RAM
+        self.ram = [None]*255
+        #Initialise 8 Registers
         self.reg = [0]*8
-        self.pc = [0]*2
-        self.MAR = 0
-        self.MDR = 1
+        self.reg[7] = 0b11110100
+        #Initialise Internal Registers
+        self.pc = 0
+        self.IR = None
+        self.MAR = None
+        self.MDR = None
+        self.FL = 0
 
     def load(self,program):
         """Load a program into memory."""
-
         address = 0
+        #Loading in the program in to the RAM
         with open(program) as file:
             for line in file.readlines():
                 #print(f'line {line},length :{len(line)}')
@@ -80,38 +91,61 @@ class CPU:
         print()
 
     def run(self):
-        address = 0
-        while self.ram[address]:
-            instruction = self.ram[address]
+        
+        while True:
+            instruction = self.ram[self.pc]
+            #print(f'instruction:{instruction}')
             if instruction == self.HLT:
                 return
             elif instruction == self.PRN:
-                address += 1
-                reg_address = self.ram[address]
+                self.pc += 1
+                reg_address = self.ram[self.pc]
                 reg_value = self.reg[reg_address]
                 print(reg_value)
                 
             elif instruction == self.LDI:
-                address +=1
-                reg_address = self.ram[address]
-                address +=1
-                value = self.ram[address]
+                self.pc +=1
+                reg_address = self.ram[self.pc]
+                self.pc +=1
+                value = self.ram[self.pc]
                 self.reg[reg_address] = value
             elif instruction == self.MUL:
-                address +=1
-                reg_a = self.ram[address]
-                address +=1
-                reg_b = self.ram[address] 
+                self.pc +=1
+                reg_a = self.ram[self.pc]
+                self.pc +=1
+                reg_b = self.ram[self.pc] 
                 self.alu('MUL',reg_a,reg_b)
+            elif instruction == self.ADD:
+                self.pc +=1
+                reg_a = self.ram[self.pc]
+                self.pc +=1
+                reg_b = self.ram[self.pc] 
+                self.alu('ADD',reg_a,reg_b)
             elif instruction == self.PUSH:
-                address +=1
-                reg_address = self.ram[address]
+                self.pc +=1
+                reg_address = self.ram[self.pc]
                 self.ram[self.stackpointer] = self.reg[reg_address]
                 self.stackpointer -=1
             elif instruction == self.POP:
-                address +=1
-                reg_address = self.ram[address]
+                self.pc +=1
+                reg_address = self.ram[self.pc]
                 self.stackpointer +=1
                 self.reg[reg_address] = self.ram[self.stackpointer]
+            elif instruction == self.CALL:
+                self.pc +=1
+                register_value = self.reg[self.ram[self.pc]]
+                self.pc +=1
+                self.ram[self.stackpointer] = self.pc
+                self.stackpointer -=1
+                self.pc = register_value
+                #reduce pc value by 1 to counter the effect of pc incrementer
+                self.pc -=1
+            elif instruction == self.RET:
+                self.stackpointer +=1
+                stack_value = self.ram[self.stackpointer]
+                self.pc = stack_value
+                #reduce pc value by 1 to counter the effect of pc incrementer
+                self.pc -=1
                 
-            address +=1
+                
+            self.pc +=1
